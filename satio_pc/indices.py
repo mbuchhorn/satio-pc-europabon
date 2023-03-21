@@ -43,7 +43,6 @@ RSI_META_S2 = {
     'ndvi': {'bands': ['B08', 'B04'],
              'range': [-1, 1]},
 
-    # NDWI (Gao, 1996)
     'ndmi': {'bands': ['B08', 'B11'],
              'range': [-1, 1]},
 
@@ -51,16 +50,13 @@ RSI_META_S2 = {
             'range': [-1, 1]},
 
     'nbr2': {'bands': ['B11', 'B12'],
-             'range': [-3, 3]},
+             'range': [-1, 1]},
 
-    'evi': {'bands': ['B08', 'B04', 'B02'],
+    'evi': {'bands': ['B08A', 'B04', 'B02'],
             'range': [-3, 3]},
 
-    'evi2': {'bands': ['B08', 'B04'],
-             'range': [-3, 3]},
-
     'savi': {'bands': ['B08', 'B04'],
-             'range': [-3, 3]},
+             'range': [-1, 1]},
 
     'hsvh': {'bands': ['B04', 'B03', 'B02'],
              'range': [0, 1]},
@@ -75,7 +71,7 @@ RSI_META_S2 = {
              'range': [0, 1]},
 
     'nirv': {'bands': ['B08', 'B04'],
-             'range': [-1, 1]},
+             'range': [0, 1]},
 
     'auc': {'bands': ['B02', 'B03', 'B04',
                       'B08', 'B11', 'B12'],
@@ -85,9 +81,13 @@ RSI_META_S2 = {
                        'B08', 'B11', 'B12'],
              'range': [0, 1]},
 
-    # ndwi (mcFeeters)
-    'ndwi': {'bands': ['B03', 'B08'],
+    # ndwi (GAO, 1996)
+    'ndwi': {'bands': ['B08A', 'B12'],
              'range': [-1, 1]},
+
+    # ndwi (McFeeters, 1996)
+    'ndwi2': {'bands': ['B03', 'B08A'],
+              'range': [-1, 1]},
 
     # modified NDWI (Xu, 2006)
     'mndwi': {'bands': ['B03', 'B11'],
@@ -96,6 +96,10 @@ RSI_META_S2 = {
     # normalized difference greenness index
     'ndgi': {'bands': ['B03', 'B04'],
              'range': [-1, 1]},
+
+    # advanced Vegetation Index (AVI)
+    'avi': {'bands': ['B04', 'B08'],
+            'range': [0, 1]},
 
     # bare soil index
     'bsi': {'bands': ['B02', 'B04', 'B08', 'B11'],
@@ -119,7 +123,15 @@ RSI_META_S2 = {
               'range': [-1, 1]},
 
     'ndre5': {'bands': ['B07', 'B05'],
-              'range': [-1, 1]}
+              'range': [-1, 1]},
+
+    # improved NDVI
+    'atsavi': {'bands': ['B08', 'B04'],
+               'range': [-1, 1]},
+
+    # chlorophyll index
+    'lci': {'bands': ['B08', 'B05', 'B04'],
+            'range': [-10, 10]}
 }
 
 RSI_META_S1 = {
@@ -166,11 +178,22 @@ def get_rsi_function(rsi_name, meta=None):
     else:
         if rsi_name in ['ndvi', 'ndmi', 'nbr', 'nbr2', 'ndwi', 'ndgi',
                         'ndre1', 'ndre2', 'ndre3', 'ndre4', 'ndre5',
-                        'mndwi']:
+                        'mndwi', 'ndwi2']:
             f = norm_diff
         else:
             f = getattr(sys.modules[__name__], rsi_name)
     return f
+
+
+def atsavi(B08, B04):
+    a = 1.22
+    b = 0.03
+    X = 0.08
+    return a * (B08 - a * B04 - b) / (a * B08 + B04 - a * b + X * (1.0 + np.power(a, 2.0)))
+
+
+def lci(B08, B05, B04):
+    return (B08 - B05) / (B08 + B04)
 
 
 def evi(B08, B04, B02):
@@ -203,8 +226,16 @@ def anir(B04, B08, B11):
     return 1. / np.pi * np.arccos(site_length)
 
 
+def avi(B04, B08):
+    vi = np.power(B08 * (1.0 - B04) * (B08 - B04), 1./3.)
+    vi[B08 < B04] = 0
+    return vi
+
+
 def nirv(B08, B04):
-    return ((B08 - B04 / B08 + B04) - 0.08) * B08
+    nirv = ((B08 - B04 / B08 + B04) - 0.08) * B08
+    nirv[nirv < 0] = 0
+    return nirv
 
 
 def auc(B02, B03, B04, B08, B11, B12):
